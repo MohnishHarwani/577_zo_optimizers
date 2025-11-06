@@ -377,7 +377,7 @@ class CeLOLite(nn.Module):
         # safety knobs
         o_clip: float = 6.0,  # clamp pre-exp scheduler output
         mag_clip: float = 6.0,  # clamp pre-exp magnitude
-        update_clip_ratio: float = 0.1,  # ||Δp|| <= ratio * ||p||
+        update_clip_ratio: float = 0.05,  # ||Δp|| <= ratio * ||p||
         device: Optional[torch.device] = None,
     ):
         super().__init__()
@@ -601,8 +601,22 @@ class CeLOMetaAdapter(nn.Module):
         ema_loss = ema_loss_prev * self.ema_loss_beta + (1.0 - self.ema_loss_beta) * loss_value
         prog = torch.tensor(math.log1p(step_index), device=device)
         lfeat = torch.log1p(ema_loss.clamp_min(0))
+
+        # dmean = torch.tensor(gnorm_sum / max(n_tensors, 1) + 1e-12, device=device)
+        # rmsg = torch.tensor(math.sqrt(max(g2mean_sum, 1e-16)), device=device)
+
+        sumsq, count = 0.0, 0
+        for p in params:
+            if p.grad is None: 
+                continue
+            g = p.grad
+            sumsq += float(g.pow(2).sum().item())
+            count += g.numel()
         dmean = torch.tensor(gnorm_sum / max(n_tensors, 1) + 1e-12, device=device)
-        rmsg = torch.tensor(math.sqrt(max(g2mean_sum, 1e-16)), device=device)
+        rmsg = torch.tensor(math.sqrt(max(sumsq / max(count, 1), 1e-16)), device=device)
+
+
+
         xs = torch.stack((prog, lfeat.squeeze(), dmean, rmsg)).unsqueeze(0)
 
         gh, gc = self.sched_cell(xs, (gh, gc))
