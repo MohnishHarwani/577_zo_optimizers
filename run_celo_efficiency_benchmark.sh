@@ -1,10 +1,11 @@
 #!/bin/bash
 
 python run_celo_efficiency_benchmark.py \
-  --use_celo_hf \
+  --use_celo_local \
+  --celo_local_ckpt ./theta.state \
   --target_val_loss 2.30 \
-  --max_steps 3000 \
-  --eval_every 50
+  --max_steps 100000 \
+  --eval_every 1000
 
 # #VeLO vs AdamW
 # echo "VeLO vs AdamW"
