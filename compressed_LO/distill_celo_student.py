@@ -27,9 +27,7 @@ class PerValueMLP(hk.Module):
         self.h = hidden
 
     def __call__(self, x):
-        # x: (...,) array of grads; we build per-value features and map
         feats = _feat_map(x)
-        # flatten value dimension, keep batch dims if any
         flat = feats.reshape(-1, feats.shape[-1])
         mlp = hk.nets.MLP([self.h, self.h, 1], activate_final=False)
         out = mlp(flat).reshape(x.shape)
@@ -67,12 +65,14 @@ def to_jnp_tree(batch):
     return jax.tree.map(lambda x: jnp.asarray(x) if hasattr(x, "dtype") else x, batch)
 
 
-# ------------------ KD step ------------------
+# ------------------ KD config ------------------
 @dataclass
 class KDConfig:
+    # interpret `steps` as steps per epoch now
     steps: int = 2_000
+    epochs: int = 2_000          # NEW: number of epochs
     lr: float = 1e-3
-    eval_every: int = 100
+    eval_every: int = 100    # based on *global* step
     ckpt_path: str = "student_kd.pkl"
     celo_ckpt: str = "./theta.state"
 
@@ -85,11 +85,6 @@ def make_task(seed=7):
     return key, task, params, model_state
 
 
-@jax.jit
-def task_loss_and_grad(task, params, key, batch):
-    return jax.value_and_grad(task.loss)(params, key, batch)
-
-
 def kd_train(cfg: KDConfig):
     # Task + streams
     base_key, task, params0, state0 = make_task()
@@ -97,7 +92,7 @@ def kd_train(cfg: KDConfig):
 
     # Teacher CeLO (frozen)
     _, opt_teacher = build_celo_from_ckpt(cfg.celo_ckpt, variant="baseline")
-    t_state = opt_teacher.init(params0, model_state=state0, num_steps=cfg.steps)
+    t_state = opt_teacher.init(params0, model_state=state0, num_steps=cfg.steps * cfg.epochs)
 
     # Init student
     dummy_grads = jtu.tree_map(jnp.zeros_like, params0)
@@ -105,6 +100,7 @@ def kd_train(cfg: KDConfig):
     s_opt = optax.adam(cfg.lr)
     s_opt_state = s_opt.init(s_params)
 
+    # loss+grad that closes over `task`
     def loss_fn(params, key, batch):
         batch = to_jnp_tree(batch)
         return task.loss(params, key, batch)
@@ -113,14 +109,14 @@ def kd_train(cfg: KDConfig):
 
     @jax.jit
     def kd_step(s_params, s_opt_state, t_state, params, key, batch):
-        # teacher delta (do not mutate t_state outside; use local)
+        # teacher loss and grads
         tr_loss, grads = task_loss_and_grad(params, key, batch)
+        # teacher one-step update (local state; we don't feed updated params back into loop)
         new_t_state = opt_teacher.update(t_state, grads, loss=tr_loss)
         params_next_T = opt_teacher.get_params(new_t_state)
         delta_T = tree_sub(params_next_T, params)
 
         def loss_fn_student(p):
-            # student predicts update from grads
             delta_S = student_apply.apply(p, grads)
             l2 = tree_l2(tree_sub(delta_S, delta_T))
             cos = 1.0 - tree_cos(delta_S, delta_T)
@@ -132,24 +128,36 @@ def kd_train(cfg: KDConfig):
         )(s_params)
         updates, new_opt_state = s_opt.update(grads_theta, s_opt_state, s_params)
         new_s_params = optax.apply_updates(s_params, updates)
-        # Return teacher state untouched to keep supervision stationary
+        # keep teacher state fixed to make the target stationary
         return new_s_params, new_opt_state, t_state, loss, l2, cos
 
     params = params0
-    for step in range(1, cfg.steps + 1):
-        try:
-            batch = next(train_stream)
-        except StopIteration:
-            train_stream = task.datasets.train
-            batch = next(train_stream)
-        key = jax.random.fold_in(base_key, step)
-        s_params, s_opt_state, t_state, loss, l2, cos = kd_step(
-            s_params, s_opt_state, t_state, params, key, batch
-        )
-        if step % cfg.eval_every == 0:
-            print(
-                f"[KD {step}] distill_loss={float(loss):.4f}  L2={float(l2):.4f}  1-cos={float(cos):.4f}"
+    global_step = 0
+
+    for epoch in range(1, cfg.epochs + 1):
+        print(f"\n=== KD Epoch {epoch}/{cfg.epochs} ===")
+        # (re)start train stream each epoch
+        train_stream = task.datasets.train
+
+        for step in range(1, cfg.steps + 1):
+            try:
+                batch = next(train_stream)
+            except StopIteration:
+                train_stream = task.datasets.train
+                batch = next(train_stream)
+
+            global_step += 1
+            key = jax.random.fold_in(base_key, global_step)
+
+            s_params, s_opt_state, t_state, loss, l2, cos = kd_step(
+                s_params, s_opt_state, t_state, params, key, batch
             )
+
+            if global_step % cfg.eval_every == 0:
+                print(
+                    f"[KD epoch={epoch} step={step} global_step={global_step}] "
+                    f"distill_loss={float(loss):.4f}  L2={float(l2):.4f}  1-cos={float(cos):.4f}"
+                )
 
     with open(cfg.ckpt_path, "wb") as f:
         pickle.dump({"student_params": jax.device_get(s_params)}, f)
@@ -164,7 +172,6 @@ class StudentAdapter:
         self.p = student_params
 
     def init(self, params, model_state=None, num_steps=0):
-        # pack like OptaxAdapter: (params, dummy_state)
         return (params, None)
 
     def get_params(self, state):
@@ -173,10 +180,11 @@ class StudentAdapter:
 
     def update(self, state, grad, loss=None):
         params, _ = state
-        delta = student_apply.apply(self.p, grad)  # one-step predicted update
+        delta = student_apply.apply(self.p, grad)
         new_params = tree_add(params, delta)
         return (new_params, None)
 
 
 if __name__ == "__main__":
     kd_train(KDConfig())
+
