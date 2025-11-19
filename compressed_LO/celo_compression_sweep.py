@@ -20,6 +20,7 @@ import jax.numpy as jnp
 from jax import tree_util as jtu
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 from learned_optimization.tasks.fixed.transformer_lm import (
     TransformerLM_LM1B_MultiRuntime_0,
@@ -30,8 +31,8 @@ from celo.utils import load_state
 # Your helpers & variants live in this module:
 from compress_celo import (
     build_celo_from_ckpt,
-    prune_by_magnitude,     # still imported if you want to poke at it
-    quantize_fake_int8,     # same
+    prune_by_magnitude,  # still imported if you want to poke at it
+    quantize_fake_int8,  # same
 )
 
 
@@ -45,8 +46,9 @@ class Cfg:
 
     # ---- Training ----
     num_steps: int = 2_000
-    eval_every: int = 100
+    eval_every: int = 1
     seed: int = 7
+    num_seeds: int = 10
 
     # ---- Compression sweep ----
     # Sparsity levels for pruning (0.0 == baseline, so we skip 0.0 in the sweep)
@@ -54,11 +56,11 @@ class Cfg:
     include_quant8: bool = True  # include a pure quantized CeLO point
 
     # Bit-width assumptions for FLOP-ish accounting
-    base_bits: int = 32   # baseline CeLO weights
-    quant_bits: int = 8   # quant8 weights
+    base_bits: int = 32  # baseline CeLO weights
+    quant_bits: int = 8  # quant8 weights
 
     # ---- Smoothing ----
-    ewm_span: int = 50    # EWMA span for smoothing plots
+    ewm_span: int = 50  # EWMA span for smoothing plots
 
     # ---- Output ----
     csv_path: str = "celo_compression_sweep.csv"
@@ -87,6 +89,7 @@ def to_jnp_tree(x):
 
 def make_step_fns(task):
     """Create JITted step & eval functions that close over `task`."""
+
     def loss_fn(params, key, batch):
         batch = jax.tree.map(to_jnp_tree, batch)
         return task.loss(params, key, batch)
@@ -198,55 +201,74 @@ def build_celo_variants_and_flops(cfg: Cfg):
 
     return optimizers, flops_per_step, compression_ratio
 
+def run_single_seed(cfg: Cfg, seed: int, csv_writer) -> pd.DataFrame:
+    """
+    Run the compression sweep for a single random seed.
+    Returns a DataFrame with columns:
+        seed, variant, step, train_loss, cum_flops, compression
+    """
 
-# ----------------------------- Main ---------------------------------
-
-
-def main():
-    cfg = CFG
-
-    # Task + data
-    base_key, task, init_params, init_state = make_task_and_init(cfg.seed)
+    # Task + data for THIS seed
+    base_key, task, init_params, init_state = make_task_and_init(seed)
     train_stream = task.datasets.train
-    val_stream = task.datasets.valid if hasattr(task.datasets, "valid") else task.datasets.train
 
+    # We want both loss+grad and a clean eval loss
     loss_and_grad_fn, eval_loss_fn = make_step_fns(task)
 
     # Build CeLO variants + FLOP proxies
     optimizers, flops_per_step, compression_ratio = build_celo_variants_and_flops(cfg)
     names = list(optimizers.keys())
 
-    # Initialize optimizer states (independent copies of params/state)
+    # Initialize optimizer states (independent copy per variant)
     states: Dict[str, Any] = {}
     for name, opt in optimizers.items():
-        states[name] = opt.init(init_params, model_state=init_state, num_steps=cfg.num_steps)
+        states[name] = opt.init(
+            init_params,
+            model_state=init_state,
+            num_steps=cfg.num_steps,
+        )
 
-    # History: one list per variant
+
+    # # Initialize optimizer states (independent copy per variant)
+    # states: Dict[str, Any] = {}
+    # for name, opt in optimizers.items():
+    #     # This call should match whatever you already do in main()
+    #     states[name] = opt.init(
+    #         init_params,
+    #         model_state=init_state,
+    #         num_steps=cfg.num_steps,
+    #         key=base_key,
+    #         data=train_stream,
+    #     )
+
+    # History for this seed
     history: Dict[str, Dict[str, list]] = {
         n: {"steps": [], "train_loss": [], "cum_flops": []} for n in names
     }
+    last_train_loss: Dict[str, float] = {}
 
-    # Keep last training loss per variant so we can log it at eval points
-    last_train_loss: Dict[str, float] = {n: float("nan") for n in names}
-
-    # CSV writer (one row per (step, variant) at eval points)
-    csv_file = open(cfg.csv_path, "w", newline="")
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(["variant", "step", "train_loss", "val_loss", "cum_flops"])
-
-    # Simple JIT warmup (to avoid counting compilation in timing, if you care)
-    warm_batch = next(train_stream)
-    for idx, n in enumerate(names):
-        k_warm = jax.random.fold_in(base_key, 0xC0FFEE + idx)
-        opt = optimizers[n]
-        st = states[n]
+    # ---- Initial evaluation at step 0 (no updates yet) ----
+    init_batch = next(train_stream)
+    for idx, name in enumerate(names):
+        opt = optimizers[name]
+        st = states[name]
         params = opt.get_params(st)
-        _ = loss_and_grad_fn(params, k_warm, warm_batch)
 
-    # Training loop
-    start_wall = time.perf_counter()
+        k0 = jax.random.fold_in(base_key, 0xBEEF + idx)
+        init_loss = eval_loss_fn(params, k0, init_batch)
+
+        last_train_loss[name] = float(init_loss)
+        history[name]["steps"].append(0)
+        history[name]["train_loss"].append(float(init_loss))
+        history[name]["cum_flops"].append(0.0)
+
+        if csv_writer is not None:
+            csv_writer.writerow(
+                [seed, name, 0, float(init_loss), 0.0, compression_ratio[name]]
+            )
+
+    # ---- Training loop for this seed ----
     main_key = base_key
-
     for step in range(1, cfg.num_steps + 1):
         try:
             batch = next(train_stream)
@@ -254,130 +276,153 @@ def main():
             train_stream = task.datasets.train
             batch = next(train_stream)
 
-        # --- Training step for each variant ---
+        # training step for each variant
         for idx, name in enumerate(names):
             opt = optimizers[name]
             st = states[name]
 
-            # Per-variant RNG
             k = jax.random.fold_in(main_key, step * 997 + idx)
-
             params = opt.get_params(st)
             tr_loss, grad = loss_and_grad_fn(params, k, batch)
+
             st = opt.update(st, grad, loss=tr_loss)
             states[name] = st
             last_train_loss[name] = float(tr_loss)
 
-        # --- Evaluation / logging ---
+        # logging for this seed
         if step % cfg.eval_every == 0:
-            try:
-                val_batch = next(val_stream)
-            except StopIteration:
-                val_stream = task.datasets.valid if hasattr(task.datasets, "valid") else task.datasets.train
-                val_batch = next(val_stream)
-
-            log_strings = []
-            for idx, name in enumerate(names):
-                opt = optimizers[name]
-                st = states[name]
-                val_key = jax.random.fold_in(main_key, 100_000 + step * 13 + idx)
-
-                val_params = opt.get_params(st)
-                val_loss = eval_loss_fn(val_params, val_key, val_batch)
-                train_loss = last_train_loss[name]
-                cum_flops = step * flops_per_step[name]
+            for name in names:
+                tl = last_train_loss[name]
+                cf = step * flops_per_step[name]
 
                 history[name]["steps"].append(step)
-                history[name]["train_loss"].append(train_loss)
-                history[name]["cum_flops"].append(cum_flops)
+                history[name]["train_loss"].append(tl)
+                history[name]["cum_flops"].append(cf)
 
-                csv_writer.writerow([name, step, train_loss, val_loss, cum_flops])
-                log_strings.append(
-                    f"{name}: train_loss={train_loss:.4f}, val_loss={val_loss:.4f}"
-                )
+                if csv_writer is not None:
+                    csv_writer.writerow(
+                        [seed, name, step, tl, cf, compression_ratio[name]]
+                    )
 
-            elapsed = time.perf_counter() - start_wall
-            log_str = " | ".join(log_strings)
-            print(f"[step {step:05d}] {log_str}   (elapsed {elapsed:.1f}s)")
-
-    csv_file.close()
-    print(f"[INFO] CSV written to {cfg.csv_path}")
-
-    # ----------------------- Build DataFrame -------------------------
-
+    # ---- Convert this seed's history to a DataFrame ----
     records = []
     for name in names:
-        steps = history[name]["steps"]
-        train_losses = history[name]["train_loss"]
-        cum_flops = history[name]["cum_flops"]
         comp = compression_ratio[name]
-        for s, tl, cf in zip(steps, train_losses, cum_flops):
+        h = history[name]
+        for stp, tl, cf in zip(h["steps"], h["train_loss"], h["cum_flops"]):
             records.append(
                 dict(
+                    seed=seed,
                     variant=name,
-                    step=s,
+                    step=stp,
                     train_loss=tl,
                     cum_flops=cf,
                     compression=comp,
                 )
             )
 
-    df = pd.DataFrame(records)
+    return pd.DataFrame(records)
+
+# ----------------------------- Main ---------------------------------
+def main():
+    cfg = CFG
+
+    seeds = [cfg.seed + i for i in range(cfg.num_seeds)]
+    all_dfs = []
+
+    # CSV will contain all seeds together
+    with open(cfg.csv_path, "w", newline="") as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(
+            ["seed", "variant", "step", "train_loss", "cum_flops", "compression"]
+        )
+
+        for s in seeds:
+            print(f"[INFO] Running seed {s}")
+            df_seed = run_single_seed(cfg, s, csv_writer)
+            all_dfs.append(df_seed)
+
+    if not all_dfs:
+        print("[WARN] No runs completed; nothing to plot.")
+        return
+
+    df = pd.concat(all_dfs, ignore_index=True)
     if df.empty:
         print("[WARN] No history recorded; no plots will be generated.")
         return
 
-    # ----------------------- Plots (EWMA) ----------------------------
+    # ----------------------- Aggregate stats -------------------------
+    # Group by (variant, step) across seeds
+    grouped = (
+        df.groupby(["variant", "step"])
+        .agg(
+            mean_loss=("train_loss", "mean"),
+            std_loss=("train_loss", "std"),
+            mean_cum_flops=("cum_flops", "mean"),
+            compression=("compression", "mean"),
+        )
+        .reset_index()
+    )
+
+    # Std might be NaN if there's only one seed; fill with 0 to be safe
+    grouped["std_loss"] = grouped["std_loss"].fillna(0.0)
+
+    # stderr = std / sqrt(num_seeds)
+    grouped["stderr_loss"] = grouped["std_loss"] / np.sqrt(cfg.num_seeds)
 
     span = cfg.ewm_span
 
-    # 1) training loss vs iterations (EWMA)
-    plt.figure()
-    for name in names:
-        sub = df[df["variant"] == name].sort_values("step")
-        if sub.empty:
-            continue
-        smoothed = sub["train_loss"].ewm(span=span, adjust=False).mean()
-        plt.plot(
-            sub["step"],
-            smoothed,
-            label=f"{name} (x{compression_ratio[name]:.2f})",
-        )
+    # ----------------- Plot 1: mean ± stderr vs step -----------------
+    plt.figure(figsize=(8, 5))
+    for name in grouped["variant"].unique():
+        g = grouped[grouped["variant"] == name].sort_values("step")
+
+        # EWMA smoothing on the mean and error
+        g["mean_loss_ewm"] = g["mean_loss"].ewm(span=span, adjust=False).mean()
+        g["stderr_ewm"] = g["stderr_loss"].ewm(span=span, adjust=False).mean()
+
+        x = g["step"].to_numpy()
+        y = g["mean_loss_ewm"].to_numpy()
+        err = g["stderr_ewm"].to_numpy()
+
+        plt.plot(x, y, label=f"{name} (mean)")
+        plt.fill_between(x, y - err, y + err, alpha=0.2)
 
     plt.xlabel("Training step")
-    plt.ylabel("Training loss (EWMA)")
-    plt.title(f"CeLO compression sweep: training loss vs iterations (span={span})")
+    plt.ylabel("Training loss (EWMA of mean)")
+    plt.title(f"CeLO compression sweep: mean ± stderr over {cfg.num_seeds} seeds (span={span})")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    iters_plot = f"{cfg.plot_prefix}_train_loss_vs_iters_ewm.png"
-    plt.savefig(iters_plot, dpi=300)
-    print(f"[INFO] Saved {iters_plot}")
+    step_plot = f"{cfg.plot_prefix}_mean_pm_stderr_vs_step_ewm.png"
+    plt.savefig(step_plot, dpi=300)
+    print(f"[INFO] Saved {step_plot}")
 
-    # 2) training loss vs FLOPs (EWMA)
-    plt.figure()
-    for name in names:
-        sub = df[df["variant"] == name].sort_values("cum_flops")
-        if sub.empty:
-            continue
-        smoothed = sub["train_loss"].ewm(span=span, adjust=False).mean()
-        plt.plot(
-            sub["cum_flops"],
-            smoothed,
-            label=f"{name} (x{compression_ratio[name]:.2f})",
-        )
+    # ------------- Plot 2: mean ± std vs FLOPs ----------------------
+    plt.figure(figsize=(8, 5))
+    for name in grouped["variant"].unique():
+        g = grouped[grouped["variant"] == name].sort_values("mean_cum_flops")
+
+        g["mean_loss_ewm"] = g["mean_loss"].ewm(span=span, adjust=False).mean()
+        g["std_ewm"] = g["std_loss"].ewm(span=span, adjust=False).mean()
+
+        x = g["mean_cum_flops"].to_numpy()
+        y = g["mean_loss_ewm"].to_numpy()
+        err = g["std_ewm"].to_numpy()
+
+        plt.plot(x, y, label=f"{name} (mean)")
+        plt.fill_between(x, y - err, y + err, alpha=0.2)
 
     plt.xlabel("Cumulative FLOPs proxy (N * bits * steps)")
-    plt.ylabel("Training loss (EWMA)")
-    plt.title(f"CeLO compression sweep: training loss vs FLOPs (span={span})")
+    plt.ylabel("Training loss (EWMA of mean)")
+    plt.title(f"CeLO compression sweep: mean ± std vs FLOPs over {cfg.num_seeds} seeds (span={span})")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    flops_plot = f"{cfg.plot_prefix}_train_loss_vs_flops_ewm.png"
+    flops_plot = f"{cfg.plot_prefix}_mean_pm_std_vs_flops_ewm.png"
     plt.savefig(flops_plot, dpi=300)
     print(f"[INFO] Saved {flops_plot}")
 
 
 if __name__ == "__main__":
     main()
-
