@@ -105,15 +105,21 @@ def kd_train(cfg: KDConfig):
     s_opt = optax.adam(cfg.lr)
     s_opt_state = s_opt.init(s_params)
 
+    def loss_fn(params, key, batch):
+        batch = to_jnp_tree(batch)
+        return task.loss(params, key, batch)
+
+    task_loss_and_grad = jax.jit(jax.value_and_grad(loss_fn))
+
     @jax.jit
     def kd_step(s_params, s_opt_state, t_state, params, key, batch):
         # teacher delta (do not mutate t_state outside; use local)
-        tr_loss, grads = task_loss_and_grad(task, params, key, to_jnp_tree(batch))
+        tr_loss, grads = task_loss_and_grad(params, key, batch)
         new_t_state = opt_teacher.update(t_state, grads, loss=tr_loss)
         params_next_T = opt_teacher.get_params(new_t_state)
         delta_T = tree_sub(params_next_T, params)
 
-        def loss_fn(p):
+        def loss_fn_student(p):
             # student predicts update from grads
             delta_S = student_apply.apply(p, grads)
             l2 = tree_l2(tree_sub(delta_S, delta_T))
@@ -121,9 +127,9 @@ def kd_train(cfg: KDConfig):
             reg = tree_l2(delta_S) * 1e-4
             return l2 + 0.25 * cos + reg, (l2, cos)
 
-        (loss, (l2, cos)), grads_theta = jax.value_and_grad(loss_fn, has_aux=True)(
-            s_params
-        )
+        (loss, (l2, cos)), grads_theta = jax.value_and_grad(
+            loss_fn_student, has_aux=True
+        )(s_params)
         updates, new_opt_state = s_opt.update(grads_theta, s_opt_state, s_params)
         new_s_params = optax.apply_updates(s_params, updates)
         # Return teacher state untouched to keep supervision stationary
