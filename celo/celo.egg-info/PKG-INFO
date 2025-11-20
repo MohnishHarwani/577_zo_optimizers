@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: celo
+Version: 0.0.1
+Summary: Compute-efficient learned optimizers in JAX
+Author: Abhinav Moudgil
+Author-email: abhinavmoudgil95@gmail.com
+License-File: LICENSE
+Dynamic: author
+Dynamic: author-email
+Dynamic: license-file
+Dynamic: summary
