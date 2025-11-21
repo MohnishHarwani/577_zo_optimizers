@@ -48,11 +48,11 @@ class Cfg:
     num_steps: int = 2_000
     eval_every: int = 1
     seed: int = 7
-    num_seeds: int = 10
+    num_seeds: int = 1
 
     # ---- Compression sweep ----
     # Sparsity levels for pruning (0.0 == baseline, so we skip 0.0 in the sweep)
-    prune_levels: Tuple[float, ...] = (0.0, 0.5, 0.75, 0.9)
+    prune_levels: Tuple[float, ...] = (0.0, 0.5, 0.75, 0.999)
     include_quant8: bool = True  # include a pure quantized CeLO point
 
     # Bit-width assumptions for FLOP-ish accounting
@@ -154,6 +154,33 @@ def build_celo_variants_and_flops(cfg: Cfg):
     optimizers[name_base] = opt_base
     flops_per_step[name_base] = baseline_flops
     compression_ratio[name_base] = 1.0
+
+    from jax import tree_util as jtu
+    import jax.numpy as jnp
+
+    def frac_zeros(tree) -> float:
+        leaves, _ = jtu.tree_flatten(tree)
+        total = 0
+        zeros = 0
+        for x in leaves:
+            if hasattr(x, "size") and getattr(x, "ndim", 0) > 0 and x.size > 0:
+                arr = jnp.asarray(x)
+                total += int(arr.size)
+                zeros += int((arr == 0).sum())
+        if total == 0:
+            print("[WARN] frac_zeros: no array leaves found; returning 0.0")
+            return 0.0
+        return float(zeros) / float(total)
+
+    lopt = get_optimizer("celo")
+    theta_tmpl = lopt.init(jax.random.PRNGKey(0))
+    theta_full = load_state(cfg.celo_ckpt, theta_tmpl)
+    theta_pruned = prune_by_magnitude(theta_full, sparsity=1.0)
+
+    print("baseline sparsity:", frac_zeros(theta_full))
+    print("pruned sparsity  :", frac_zeros(theta_pruned))
+
+
 
     # ---- Pruned variants ----
     for sparsity in cfg.prune_levels:

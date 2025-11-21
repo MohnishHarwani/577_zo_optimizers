@@ -9,43 +9,96 @@ from jax import tree_util as jtu
 from celo.factory import get_optimizer
 from celo.utils import load_state  # uses flax.serialization.from_bytes under the hood
 
+import jax
+import jax.numpy as jnp
+from jax import tree_util as jtu
+
+import numpy as np
+import jax
+import jax.numpy as jnp
+from jax import tree_util as jtu
+from typing import Any
+
 # ------------------ Pruning ------------------
 def _percentile_threshold(x: jnp.ndarray, keep_ratio: float) -> jnp.ndarray:
-    flat = jnp.abs(x).ravel()
-    # kth largest magnitude -> partition
-    k = jnp.maximum(1, jnp.floor(keep_ratio * flat.size).astype(jnp.int32))
-    # index of the kth largest
-    thresh = jnp.partition(flat, flat.size - k)[flat.size - k]
-    return thresh
+    """
+    Compute the magnitude threshold so that ~keep_ratio of entries are kept.
+    This is done with NumPy (on CPU) to avoid JAX static-arg hashing issues.
+    """
+    flat = np.abs(np.asarray(x)).ravel()
+    N = flat.size
+    if N == 0:
+        # arbitrary, won't prune anything anyway
+        return jnp.asarray(0.0, dtype=jnp.result_type(x))
+
+    # number of elements to keep per array
+    k = max(1, int(np.floor(keep_ratio * N)))
+    # index (0-based) of the k-th largest value = N - k
+    idx = max(0, min(N - 1, N - k))
+    thresh_np = np.partition(flat, idx)[idx]
+    return jnp.asarray(thresh_np, dtype=jnp.result_type(x))
+
 
 def prune_by_magnitude(theta: Any, sparsity: float) -> Any:
-    """Global magnitude pruning on each leaf. sparsity=0.5 keeps 50% largest."""
+    """Per-leaf magnitude pruning. sparsity=0.5 keeps ~50% largest per leaf."""
+    # Optional: truly zero everything if sparsity >= 1.0
+    if sparsity >= 1.0:
+        def _all_zero(x):
+            if not hasattr(x, "shape"):
+                return x
+            arr = jnp.asarray(x)
+            if arr.size == 0 or arr.ndim == 0:
+                return x
+            return jnp.zeros_like(arr)
+        return jtu.tree_map(_all_zero, theta)
+
     keep_ratio = 1.0 - sparsity
+
     def _prune(x):
-        if not isinstance(x, jnp.ndarray) or x.size == 0 or x.ndim == 0:
+        # Treat anything with a shape as array-like
+        if not hasattr(x, "shape"):
             return x
-        th = _percentile_threshold(x, keep_ratio)
-        return jnp.where(jnp.abs(x) >= th, x, jnp.zeros_like(x))
+        arr = jnp.asarray(x)
+        # Skip scalars / empty arrays
+        if arr.size == 0 or arr.ndim == 0:
+            return x
+        th = _percentile_threshold(arr, keep_ratio)
+        pruned = jnp.where(jnp.abs(arr) >= th, arr, jnp.zeros_like(arr))
+        return pruned
+
     return jtu.tree_map(_prune, theta)
+
 
 # ------------------ Fake INT8 (per-array symmetric) ------------------
 def quantize_fake_int8(theta: Any) -> Any:
-    """Quantize each leaf to int8 with a per-array scale, then dequantize to float32.
-       (Shrinks checkpoints if you store q,scale; compute still runs in float32.)"""
+    """Quantize each leaf to int8 with a per-array scale, then dequantize."""
     eps = 1e-8
+
     def _q(x):
-        if not isinstance(x, jnp.ndarray) or x.size == 0:
+        if not hasattr(x, "shape"):
             return x
-        s = jnp.max(jnp.abs(x)) / 127.0 + eps
-        q = jnp.round(x / s).clip(-127, 127).astype(jnp.int8)
-        return q.astype(jnp.float32) * s
+        arr = jnp.asarray(x)
+        if arr.size == 0 or arr.ndim == 0:
+            return x
+        s = jnp.max(jnp.abs(arr)) / 127.0 + eps
+        q = jnp.round(arr / s).clip(-127, 127).astype(jnp.int8)
+        return (q.astype(arr.dtype) * s).astype(arr.dtype)
+
     return jtu.tree_map(_q, theta)
+
 
 # ------------------ bf16 cast ------------------
 def cast_bf16(theta: Any) -> Any:
     def _c(x):
-        return x.astype(jnp.bfloat16) if isinstance(x, jnp.ndarray) and x.dtype == jnp.float32 else x
+        if not hasattr(x, "shape"):
+            return x
+        arr = jnp.asarray(x)
+        if arr.size == 0 or arr.ndim == 0:
+            return x
+        return arr.astype(jnp.bfloat16) if arr.dtype == jnp.float32 else arr
+
     return jtu.tree_map(_c, theta)
+
 
 # --- paste into compress_celo.py ---
 
