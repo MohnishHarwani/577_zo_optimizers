@@ -52,7 +52,7 @@ class Cfg:
 
     # ---- Compression sweep ----
     # Sparsity levels for pruning (0.0 == baseline, so we skip 0.0 in the sweep)
-    prune_levels: Tuple[float, ...] = (0.0, 0.5, 0.75, 0.999)
+    prune_levels: Tuple[float, ...] = (0.0, 0.5)
     include_quant8: bool = True  # include a pure quantized CeLO point
 
     # Bit-width assumptions for FLOP-ish accounting
@@ -172,6 +172,61 @@ def build_celo_variants_and_flops(cfg: Cfg):
             return 0.0
         return float(zeros) / float(total)
 
+    def randomize_pruned(theta, sparsity: float, key: jax.Array):
+        """
+        Use the same magnitude-based pruning mask as prune_by_magnitude,
+        but instead of zeroing pruned entries, fill them with random values
+        ~ N(0, std_of_original_weights).
+        """
+        # First get the pruned version (this encodes the mask)
+        theta_pruned = prune_by_magnitude(theta, sparsity=sparsity)
+
+        leaves_theta, treedef = jtu.tree_flatten(theta)
+        leaves_pruned, _ = jtu.tree_flatten(theta_pruned)
+
+        subkeys = jax.random.split(key, len(leaves_theta))
+        new_leaves = []
+
+        for w, p, k in zip(leaves_theta, leaves_pruned, subkeys):
+            # Non-array leaves are passed through unchanged
+            if not hasattr(w, "shape"):
+                new_leaves.append(w)
+                continue
+
+            arr = jnp.asarray(w)
+            parr = jnp.asarray(p)
+
+            # Skip scalars / empty arrays
+            if arr.size == 0 or arr.ndim == 0:
+                new_leaves.append(w)
+                continue
+
+            # pruned positions: where prune_by_magnitude produced 0
+            pruned_mask = (parr == 0)
+
+            # standard deviation of original weights
+            std = jnp.std(arr)
+            # avoid std = 0 (all-constant arrays) causing NaNs
+            std = jnp.where(std == 0.0, 1e-8, std)
+
+            rand = jax.random.normal(k, arr.shape) * (std *10)
+
+            # keep original values where NOT pruned; randomize where pruned
+            new_arr = arr * (~pruned_mask) + rand * pruned_mask
+            new_leaves.append(new_arr)
+
+        return jtu.tree_unflatten(treedef, new_leaves)
+
+
+    lopt = get_optimizer("celo")
+    theta_tmpl = lopt.init(jax.random.PRNGKey(0))
+    theta_full = load_state(cfg.celo_ckpt, theta_tmpl)
+    theta_pruned = prune_by_magnitude(theta_full, sparsity=1.0)
+
+    print("baseline sparsity:", frac_zeros(theta_full))
+    print("pruned sparsity  :", frac_zeros(theta_pruned))
+
+
     lopt = get_optimizer("celo")
     theta_tmpl = lopt.init(jax.random.PRNGKey(0))
     theta_full = load_state(cfg.celo_ckpt, theta_tmpl)
@@ -208,6 +263,23 @@ def build_celo_variants_and_flops(cfg: Cfg):
         optimizers[name] = opt_p
         flops_per_step[name] = eff_flops
         compression_ratio[name] = comp
+
+        # ---- Randomized-pruned variant (same mask, random values on pruned entries) ----
+        name_rand = f"prune_{int(sparsity * 100)}_rand"
+
+        # Use the same baseline theta used for FLOP counting
+        # (theta_base loaded at the top of this function)
+        rand_key = jax.random.PRNGKey(cfg.seed + int(sparsity * 1000))
+        theta_rand = randomize_pruned(theta_base, sparsity=sparsity, key=rand_key)
+
+        lopt_rand = get_optimizer("celo")
+        opt_rand = lopt_rand.opt_fn(theta_rand)
+
+        optimizers[name_rand] = opt_rand
+        flops_per_step[name_rand] = eff_flops       # same nnz → same FLOPs proxy
+        compression_ratio[name_rand] = comp
+
+
 
     # ---- Quantized variant (fake int8) ----
     if cfg.include_quant8:

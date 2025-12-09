@@ -18,6 +18,7 @@ import jax
 import jax.numpy as jnp
 from jax import tree_util as jtu
 from typing import Any
+from celo.utils import init_lopt_from_ckpt
 
 # ------------------ Pruning ------------------
 def _percentile_threshold(x: jnp.ndarray, keep_ratio: float) -> jnp.ndarray:
@@ -140,6 +141,7 @@ def build_celo_two_stage(phase1_ckpt: str,
                          phase2_ckpt: str,
                          variant: Variant = "baseline",
                          sparsity: float = 0.5) -> Tuple[Any, Any]:
+
     """Two-stage init using phase1 + phase2 checkpoints.
 
     Notes:

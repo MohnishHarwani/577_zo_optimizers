@@ -1,3 +1,6 @@
 [submodule "pylo"]
 	path = pylo
 	url = https://github.com/Belilovsky-Lab/pylo
+[submodule "celo"]
+	path = celo
+	url = https://github.com/amoudgl/celo

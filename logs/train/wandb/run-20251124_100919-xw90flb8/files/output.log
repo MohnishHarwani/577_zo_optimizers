@@ -1,0 +1,109 @@
+I1124 10:09:20.641270 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: cifar10/3.0.2
+I1124 10:09:21.276018 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmpnthevh8ztfds
+I1124 10:09:21.278329 132205148022592 dataset_info.py:687] For 'cifar10/3.0.2': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:09:21.480143 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: cifar10/3.0.2
+I1124 10:09:21.906883 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmplxje6rmptfds
+I1124 10:09:21.908574 132205148022592 dataset_info.py:687] For 'cifar10/3.0.2': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:09:21.908814 132205148022592 dataset_builder.py:638] Generating dataset cifar10 (/home/mbezick/tensorflow_datasets/cifar10/3.0.2)
+[1mDownloading and preparing dataset 162.17 MiB (download: 162.17 MiB, generated: 132.40 MiB, total: 294.58 MiB) to /home/mbezick/tensorflow_datasets/cifar10/3.0.2...[0m
+Dl Completed...: 0 url [00:00, ? url/s]          I1124 10:09:22.126528 132205148022592 download_manager.py:401] Downloading https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz into /home/mbezick/tensorflow_datasets/downloads/cs.toronto.edu_kriz_cifar-10-binaryODHPtIjLh3oLcXirEISTO7dkzyKjRCuol6lV8Wc6C7s.tar.gz.tmp.886013f0a47b463fb0c696cb6ee30305...
+Extraction completed...: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 8/8 [00:03<00:00,  2.28 file/s]
+Dl Size...: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 162/162 [00:03<00:00, 46.25 MiB/s]
+Dl Completed...: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:03<00:00,  3.50s/ url]
+Generating splits...:   0%|                                                                                                                                                                                       | 0/2 [00:00<?, ? splits/s]I1124 10:09:53.109475 132205148022592 writer.py:304] Done writing /home/mbezick/tensorflow_datasets/cifar10/3.0.2.incomplete6FG1XN/cifar10-train.tfrecord*. Number of examples: 50000 (shards: [50000])
+Generating splits...:  50%|███████████████████████████████████████████████████████████████████████████████████████▌                                                                                       | 1/2 [00:27<00:27, 27.49s/ splits]I1124 10:09:58.526788 132205148022592 writer.py:304] Done writing /home/mbezick/tensorflow_datasets/cifar10/3.0.2.incomplete6FG1XN/cifar10-test.tfrecord*. Number of examples: 10000 (shards: [10000])
+I1124 10:09:59.319579 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset cifar10 for split train[0:80%], from /home/mbezick/tensorflow_datasets/cifar10/3.0.2                                                                
+[1mDataset cifar10 downloaded and prepared to /home/mbezick/tensorflow_datasets/cifar10/3.0.2. Subsequent calls will reuse this data.[0m
+I1124 10:09:59.375823 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.377696 132205148022592 dataset_builder.py:573] Reusing dataset cifar10 (/home/mbezick/tensorflow_datasets/cifar10/3.0.2)
+I1124 10:09:59.502046 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset cifar10 for split train[80%:90%], from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.506328 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.508139 132205148022592 dataset_builder.py:573] Reusing dataset cifar10 (/home/mbezick/tensorflow_datasets/cifar10/3.0.2)
+I1124 10:09:59.629454 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset cifar10 for split train[90%:], from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.633433 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.635071 132205148022592 dataset_builder.py:573] Reusing dataset cifar10 (/home/mbezick/tensorflow_datasets/cifar10/3.0.2)
+I1124 10:09:59.811397 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset cifar10 for split test, from /home/mbezick/tensorflow_datasets/cifar10/3.0.2
+I1124 10:09:59.819793 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:09:59.822068 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:09:59.823275 132205148022592 dataset_builder.py:573] Reusing dataset fashion_mnist (/home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1)
+I1124 10:10:00.259021 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset fashion_mnist for split train[0:80%], from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.272730 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.274348 132205148022592 dataset_builder.py:573] Reusing dataset fashion_mnist (/home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1)
+I1124 10:10:00.371634 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset fashion_mnist for split train[80%:90%], from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.374795 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.376146 132205148022592 dataset_builder.py:573] Reusing dataset fashion_mnist (/home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1)
+I1124 10:10:00.474432 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset fashion_mnist for split train[90%:], from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.477511 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.478820 132205148022592 dataset_builder.py:573] Reusing dataset fashion_mnist (/home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1)
+I1124 10:10:00.598653 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset fashion_mnist for split test, from /home/mbezick/tensorflow_datasets/fashion_mnist/3.0.1
+I1124 10:10:00.900846 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: mnist/3.0.1
+I1124 10:10:01.261943 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmpstcv_uzctfds
+I1124 10:10:01.263249 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:01.457380 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: mnist/3.0.1
+I1124 10:10:01.716285 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmpk07aklhltfds
+I1124 10:10:01.718187 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:01.718536 132205148022592 dataset_builder.py:638] Generating dataset mnist (/home/mbezick/tensorflow_datasets/mnist/3.0.1)
+[1mDownloading and preparing dataset 11.06 MiB (download: 11.06 MiB, generated: 21.00 MiB, total: 32.06 MiB) to /home/mbezick/tensorflow_datasets/mnist/3.0.1...[0m
+I1124 10:10:01.915900 132205148022592 dataset_builder.py:685] Dataset mnist is hosted on GCS. It will automatically be downloaded to your
+local data directory. If you'd instead prefer to read directly from our public
+GCS bucket (recommended if you're running on GCP), you can instead pass
+`try_gcs=True` to `tfds.load` or set `data_dir=gs://tfds-data/datasets`.
+
+Dl Completed...: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:00<00:00,  7.37 file/s]
+I1124 10:10:02.684233 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/mnist/3.0.1.incompleteS3XL5B
+I1124 10:10:02.685429 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name, file_format] differ on disk and in the code. Keeping the one from code.
+[1mDataset mnist downloaded and prepared to /home/mbezick/tensorflow_datasets/mnist/3.0.1. Subsequent calls will reuse this data.[0m
+I1124 10:10:03.078278 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset mnist for split train[0:80%], from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.092189 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.093423 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:03.093645 132205148022592 dataset_builder.py:573] Reusing dataset mnist (/home/mbezick/tensorflow_datasets/mnist/3.0.1)
+I1124 10:10:03.185348 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset mnist for split train[80%:90%], from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.188714 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.189978 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:03.190210 132205148022592 dataset_builder.py:573] Reusing dataset mnist (/home/mbezick/tensorflow_datasets/mnist/3.0.1)
+I1124 10:10:03.290904 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset mnist for split train[90%:], from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.294329 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.295669 132205148022592 dataset_info.py:687] For 'mnist/3.0.1': fields info.[citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:03.295900 132205148022592 dataset_builder.py:573] Reusing dataset mnist (/home/mbezick/tensorflow_datasets/mnist/3.0.1)
+I1124 10:10:03.412038 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset mnist for split test, from /home/mbezick/tensorflow_datasets/mnist/3.0.1
+I1124 10:10:03.715605 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: svhn_cropped/3.0.0
+I1124 10:10:04.283424 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmpnivtxgz_tfds
+I1124 10:10:04.285080 132205148022592 dataset_info.py:687] For 'svhn_cropped/3.0.0': fields info.[description, release_notes, citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:04.547596 132205148022592 dataset_info.py:783] Load pre-computed DatasetInfo (eg: splits, num examples,...) from GCS: svhn_cropped/3.0.0
+I1124 10:10:04.806348 132205148022592 dataset_info.py:595] Load dataset info from /tmp/tmp226jhf65tfds
+I1124 10:10:04.807736 132205148022592 dataset_info.py:687] For 'svhn_cropped/3.0.0': fields info.[description, release_notes, citation, splits, supervised_keys, module_name] differ on disk and in the code. Keeping the one from code.
+I1124 10:10:04.808025 132205148022592 dataset_builder.py:638] Generating dataset svhn_cropped (/home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0)
+[1mDownloading and preparing dataset 1.47 GiB (download: 1.47 GiB, generated: Unknown size, total: 1.47 GiB) to /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0...[0m
+Dl Completed...: 0 url [00:00, ? uI1124 10:10:05.009473 132205148022592 download_manager.py:401] Downloading http://ufldl.stanford.edu/housenumbers/extra_32x32.mat into /home/mbezick/tensorflow_datasets/downloads/ufldl.stanford.edu_housenumber_extra_32x322H3BskdvSy0nozmNN-lLEutTDhyQSJDShKe3tccJQqI.mat.tmp.b339af77db8d4c81b943a296a342f34d...
+Dl Completed...:   0%|            I1124 10:10:05.010458 132205148022592 download_manager.py:401] Downloading http://ufldl.stanford.edu/housenumbers/test_32x32.mat into /home/mbezick/tensorflow_datasets/downloads/ufldl.stanford.edu_housenumbers_test_32x32kIzM03CdHZsHqtImuAxFCXPGHhEH4JT7Owsqi_QawO4.mat.tmp.17c7d5358200494db89691c53c301fa0...
+Dl Completed...:   0%|            I1124 10:10:05.013009 132205148022592 download_manager.py:401] Downloading http://ufldl.stanford.edu/housenumbers/train_32x32.mat into /home/mbezick/tensorflow_datasets/downloads/ufldl.stanford.edu_housenumber_train_32x32ld2Spxi7bwXzIQHppdqH07zOKm5g0w9lUjJV-GNQCVQ.mat.tmp.0e91f01da31049d9b3901e0ba223a965...
+Dl Size...: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1501/1501 [01:20<00:00, 18.60 MiB/s]
+Dl Completed...: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3/3 [01:20<00:00, 26.90s/ url]
+Generating splits...:   0%|                                                                                                                                                                                       | 0/3 [00:00<?, ? splits/s]I1124 10:12:00.980336 132205148022592 writer.py:304] Done writing /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0.incompleteZVPZ0X/svhn_cropped-train.tfrecord*. Number of examples: 73257 (shards: [73257])
+Generating splits...:  33%|██████████████████████████████████████████████████████████▎                                                                                                                    | 1/3 [00:35<01:10, 35.28s/ splits]I1124 10:12:13.651757 132205148022592 writer.py:304] Done writing /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0.incompleteZVPZ0X/svhn_cropped-test.tfrecord*. Number of examples: 26032 (shards: [26032])
+Generating splits...:  67%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                          | 2/3 [00:47<00:21, 21.98s/ splits]I1124 10:16:34.000021 132205148022592 writer.py:304] Done writing /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0.incompleteZVPZ0X/svhn_cropped-extra.tfrecord*. Number of examples: 531131 (shards: [66391, 66392, 66391, 66392, 66391, 66391, 66392, 66391])
+I1124 10:16:34.116956 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset svhn_cropped for split train[0:1%], from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0                                                       
+[1mDataset svhn_cropped downloaded and prepared to /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0. Subsequent calls will reuse this data.[0m
+I1124 10:16:34.119354 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+I1124 10:16:34.120895 132205148022592 dataset_builder.py:573] Reusing dataset svhn_cropped (/home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0)
+I1124 10:16:34.256309 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset svhn_cropped for split train[80%:90%], from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+I1124 10:16:34.261369 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+I1124 10:16:34.262860 132205148022592 dataset_builder.py:573] Reusing dataset svhn_cropped (/home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0)
+I1124 10:16:34.394153 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset svhn_cropped for split train[90%:], from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+I1124 10:16:34.399136 132205148022592 dataset_info.py:595] Load dataset info from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+I1124 10:16:34.400621 132205148022592 dataset_builder.py:573] Reusing dataset svhn_cropped (/home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0)
+I1124 10:16:34.742385 132205148022592 logging_logger.py:49] Constructing tf.data.Dataset svhn_cropped for split test, from /home/mbezick/tensorflow_datasets/svhn_cropped/3.0.0
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/mbezick/Repos/577_zo_optimizers/celo/celo/train.py", line 222, in <module>
+    app.run(train)
+  File "/home/mbezick/miniconda3/envs/cuda-dev/lib/python3.11/site-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/home/mbezick/miniconda3/envs/cuda-dev/lib/python3.11/site-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+             ^^^^^^^^^^
+  File "/home/mbezick/Repos/577_zo_optimizers/celo/celo/train.py", line 94, in train
+    frozen_keys = lopt.get_frozen_param_keys() if FLAGS.train_partial else None
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MnemoCelo' object has no attribute 'get_frozen_param_keys'

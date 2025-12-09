@@ -1,0 +1,61 @@
+{
+  "os":  "Linux-6.17.0-6-generic-x86_64-with-glibc2.42",
+  "python":  "CPython 3.11.14",
+  "startedAt":  "2025-11-24T15:09:19.326439Z",
+  "args":  [
+    "--optimizer",
+    "mnemo_celo",
+    "--train_partial",
+    "--outer_iterations",
+    "20000",
+    "--max_unroll_length",
+    "400",
+    "--seed",
+    "0",
+    "--trainer",
+    "pes",
+    "--task",
+    "fast_velo",
+    "--aug",
+    "reparam",
+    "--aug_reparam_level",
+    "global",
+    "--outer_lr",
+    "3e-4",
+    "--name",
+    "mnemo_celo_quicktrain"
+  ],
+  "program":  "-m celo.train",
+  "git":  {
+    "remote":  "git@github.com:MohnishHarwani/577_zo_optimizers.git",
+    "commit":  "0808fc4a8025eb7c1c11cf97305e555bee4d5d0e"
+  },
+  "email":  "michael.bezick@gmail.com",
+  "root":  "logs/train",
+  "host":  "MichaelYusra",
+  "executable":  "/home/mbezick/miniconda3/envs/cuda-dev/bin/python",
+  "cpu_count":  6,
+  "cpu_count_logical":  12,
+  "gpu":  "NVIDIA GeForce RTX 3060",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "983040749568",
+      "used":  "164473638912"
+    }
+  },
+  "memory":  {
+    "total":  "50411552768"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 3060",
+      "memoryTotal":  "12884901888",
+      "cudaCores":  3584,
+      "architecture":  "Ampere",
+      "uuid":  "GPU-c4aa71d8-ec58-8008-43fa-24c6b78e37fe"
+    }
+  ],
+  "cudaVersion":  "13.0",
+  "writerId":  "ritvzf3qo8fyi9n2ye0w7eqxvev00ddz"
+}
