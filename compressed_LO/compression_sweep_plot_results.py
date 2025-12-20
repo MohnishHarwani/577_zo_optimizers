@@ -17,9 +17,17 @@ x = df['step']
 
 plt.title("Optimizers Training Losses vs. Step")
 
-span = 50
+span = 20
 
-plt.plot(x, df['celo_train'].ewm(span=span,adjust=False).mean(), label="Base CeLO")
+celo = df[df["variant"] == "celo"].sort_values("step")
+ewm_loss = celo['train_loss'].ewm(span=span, adjust=False).mean()
+
+plt.plot(celo['step'], ewm_loss, label="Base CeLO")
+plt.show()
+exit()
+
+
+
 plt.plot(x, df['celo_prune_train'].ewm(span=span,adjust=False).mean(), label="Pruned CeLO")
 plt.plot(x, df['celo_q8_train'].ewm(span=span,adjust=False).mean(), label="Int8 Quantization")
 

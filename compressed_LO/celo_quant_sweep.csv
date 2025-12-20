@@ -1,0 +1,8 @@
+dataset,run,step,optimizer,train_loss,val_loss,cum_flops
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_fp32,10.811360359191895,10.811360359191895,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_bf16,10.762504577636719,10.762504577636719,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_fp16,10.876133918762207,10.876133918762207,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_fp8_e4m3fn,10.89430046081543,10.89430046081543,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_fp8_e5m2,10.826614379882812,10.826614379882812,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_int8,10.732137680053711,10.732137680053711,0.0
+TransformerLM_LM1B_MultiRuntime_0,0,0,celo_int4,10.692142486572266,10.692142486572266,0.0
